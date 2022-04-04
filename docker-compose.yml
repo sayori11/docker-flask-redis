@@ -1,0 +1,21 @@
+version: '3.9'
+
+services:
+  web:
+    build:
+      context: .
+    ports:
+    - 5000:5000
+    volumes:
+    - ./:/app
+
+  redis:
+    image: redis:6.2-alpine
+    ports:
+      - 6379:6379
+    volumes:
+      - redis:/redis
+    command: [ "redis-server", "/redis" ]
+
+volumes:
+  redis:
