@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrape URLs!</title>
+</head>
+<body>
+    <form action="{{ url_for('scrape') }}" method="post">
+        <input placeholder="Enter Url" type="text" name="url">
+        <button type="submit">Scrape</button>
+    </form>
+    {% if message %}
+        <p>{{ message }}</p>
+    {% endif %}
+</body>
+</html>

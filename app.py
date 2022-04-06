@@ -1,17 +1,30 @@
-from flask import Flask, request, redirect, url_for, render_template, make_response
+import time
+from flask import Flask, render_template, request, make_response
 import redis
-
-r = redis.Redis(host='redis', port=6379, decode_responses=True)
+from rq import Queue
+from tasks import count_words, q
 
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    count = r.incr('count')
-    id = request.cookies.get('id')
-    if not id:
-        id = r.incr('id')
-    resp = make_response(f'Hello , This is session no. {id}. This page has been visited {count} times.')
-    resp.set_cookie('id', str(id))
-    return resp
+@app.route("/scrape", methods=["GET", "POST"])
+def scrape():
+
+    message = None
+
+    if request.method=="POST":
+
+        url = request.form["url"]
+
+        task = q.enqueue(count_words, url)  
+
+        q_len = len(q)
+
+        message = f"Task {task.id} queued at {task.enqueued_at.strftime('%a, %d %b %Y %H:%M:%S')}. {q_len} jobs queued"
+
+    return render_template("scrape.html", message=message)
+
+@app.route("/check-status/<task_id>")
+def check_status(task_id):
+    task = q.fetch_job(task_id)
+    return f'Task:{task.get_status()} Result:{task.result}'
 
