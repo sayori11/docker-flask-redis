@@ -9,10 +9,31 @@
 <body>
     <form action="{{ url_for('scrape') }}" method="post">
         <input placeholder="Enter Url" type="text" name="url">
+        <input placeholder="Enter email to be notified" type="text" name="email">
         <button type="submit">Scrape</button>
     </form>
     {% if message %}
         <p>{{ message }}</p>
+
+        <form action="{{ url_for('check_status', task_id=task_id) }}">
+            <button>View Task</button>
+        </form>
+        
+        <form action="{{ url_for('stop_task') }}" method="post">
+            <input type="hidden" value={{ task_id }} name="task_id">
+            <button>Cancel Task</button>
+        </form>
+        <p>Queued tasks:</p>
+        <table>
+            <tbody>
+                {%for job in jobs%}
+                <tr>
+                    <td>{{ job.id }}</td>
+                    <td>{{ job.enqueued_at.strftime('%a, %d %b %Y %H:%M:%S') }}</td>
+                </tr>
+                {%endfor%}
+            </tbody>
+    </table>
     {% endif %}
 </body>
 </html>
