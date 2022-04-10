@@ -1,48 +1,52 @@
-from flask import Flask, render_template, request
-from tasks import count_words, q, r
-import smtplib
-from rq.command import send_stop_job_command
+from unittest import result
+from flask import Flask, redirect, render_template, request, url_for
+from tasks import count_words, count_lines, send_mail, q
+import smtplib, os, random, string
+from werkzeug.utils import secure_filename
+from utils import file_allowed, set_task_ids
+import redis
+
+r = redis.Redis(host='redis', port=6379)
+
+UPLOAD_FOLDER = './files'
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-def sendMail(message, email):
-    s = smtplib.SMTP('smtp.gmail.com', 587)
-    s.starttls()
-    s.login("gsuraj2222@gmail.com", "lgdjeitdinmcphon")
-    s.sendmail("gsuraj2222@gmail.com", email, message)
-    s.quit()
+@app.route("/")
+def index():
+    if 'key' not in request.args:
+        return redirect(url_for('get_key'))
+    key = request.args['key']
+    tasks=[]
+    if r.exists(key):
+        task_ids = r.get(key).decode()
+        if ', ' not in task_ids:
+            tasks = [q.fetch_job(task_ids)]
+        else:
+            task_ids = task_ids.split(', ')
+            tasks = [q.fetch_job(task_id) for task_id in task_ids]
+            if None in tasks:
+                tasks = [task for task in tasks if task is not None]
+    return render_template('index.html', key=key, tasks=tasks)
 
-#Notify by sending email once a task is completed or failed
-def success(job, connection, result, *args, **kwargs):
-    message = f"Task {job.id} completed! \n Result:{result}"
-    sendMail(message)
-
-def failure(job, connection, type, value, traceback):
-    message = f"Sorry,Task {job.id} could not be completed"
-    sendMail(message)
-
-#Alternately, Notifying by using a dependent function
-def send_mail(email, task_id):
-    task = q.fetch_job(task_id)
-
-    if task.get_status()=='finished':
-        message = f"Task {task_id} completed! \n Result:{task.result}"
-        sendMail(message, email)
-    else:
-        message = f"Sorry,Task {task_id} could not be completed"
-        sendMail(message, email)
+@app.route("/apikey")
+def get_key():
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
 
 @app.route("/scrape", methods=["GET", "POST"])
 def scrape():
 
-    if request.method=="POST":
+    key = request.args['key']
 
-        url = request.form["url"]
+    if request.method=="POST":
+        url = request.form['url']
         email = request.form['email']
 
-        # task = q.enqueue(count_words, url, on_success=success, on_failure=failure)
-        task = q.enqueue(count_words, url)
-        task_mail = q.enqueue_call(func=send_mail, args=(email, task.id ), depends_on=task)  
+        task = q.enqueue(count_words, url, result_ttl=2000)
+        set_task_ids(key, task.id)
+
+        task_mail = q.enqueue_call(func=send_mail, args=(email, task.id), depends_on=task)
 
         q_len = len(q)
 
@@ -50,9 +54,38 @@ def scrape():
 
         message = f"Task {task.id} queued at {task.enqueued_at.strftime('%a, %d %b %Y %H:%M:%S')}. {q_len} jobs queued"
 
-        return render_template("scrape.html", message=message, task_id=task.id, jobs=jobs)
+        return render_template("scrape.html", message=message, task_id=task.id, jobs=jobs, key=key)
 
-    return render_template("scrape.html")
+    return render_template("scrape.html", key=key)
+
+@app.route('/count-lines', methods=["GET", "POST"])
+def count_lines_file():
+    key = request.args['key']
+    if request.method=="POST":
+
+        file = request.files['text_file']
+        if file and file_allowed(file.filename):
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(file_path)
+ 
+        email = request.form['email']
+
+        task = q.enqueue(count_lines, file_path)
+
+        set_task_ids(key, task.id)
+
+        task_mail = q.enqueue_call(func=send_mail, args=(email, task.id), depends_on=task)
+
+        q_len = len(q)
+
+        jobs = q.jobs
+
+        message = f"Task {task.id} queued at {task.enqueued_at.strftime('%a, %d %b %Y %H:%M:%S')}. {q_len} jobs queued"
+
+        return render_template("file.html", message=message, task_id=task.id, jobs=jobs, key=key)
+
+    return render_template("file.html", key=key)
 
 @app.route("/check-status/<task_id>")
 def check_status(task_id):

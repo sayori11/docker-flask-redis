@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <style>
+        table, th, td {
+  border: 1px solid black;
+  padding: 5px;
+}
+    </style>
+</head>
+<body>
+    <h1>Home</h1>
+    <a href="{{ url_for('scrape', key=key) }}">Scrape Urls</a>
+    <a href="{{ url_for('count_lines_file', key=key) }}">Upload File</a>
+    {% if tasks | length > 0 %}
+        <h3>Your Tasks:</h3>
+        <table>
+            <tbody>
+                <tr>
+                    <th>Task ID</th>
+                    <th>Task Enqueued At</th>
+                    <th>Task Status</th>
+                    <th>Task Result</th>
+                </tr>
+                {%for task in tasks%}
+                <tr>
+                    <td>{{ task.id }}</td>
+                    <td>{{ task.enqueued_at.strftime('%a, %d %b %Y %H:%M:%S') }}</td>
+                    <td>{{ task.get_status() }}</td>
+                    <td>{{ task.result }}</td>
+                </tr>
+                {%endfor%}
+            </tbody>
+        </table>
+    {% endif %}
+</body>
+</html>

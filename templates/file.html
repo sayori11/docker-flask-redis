@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scrape URLs!</title>
+    <title>Count lines in file!</title>
     <style>
         table, th, td {
   border: 1px solid black;
@@ -14,10 +14,10 @@
 </head>
 <body>
     <a href="{{ url_for('index', key=key) }}">Home</a>
-    <form action="{{ url_for('scrape', key=key) }}" method="post">
-        <input placeholder="Enter Url" type="text" name="url">
-        <input placeholder="Enter email to be notified" type="text" name="email">
-        <button type="submit">Scrape</button>
+    <form action="{{ url_for('count_lines_file', key=key) }}" method="post" enctype='multipart/form-data'>
+        <input type="file" name="text_file" required>
+        <input placeholder="Enter email to be notified" type="text" name="email" required>
+        <button type="submit">Submit</button>
     </form>
     {% if message %}
         <p>{{ message }}</p>
@@ -31,7 +31,7 @@
             <button>Cancel Task</button>
         </form>
         {% if jobs | length > 0 %}
-            <h3>Queued tasks:</h3>
+            <p>Queued tasks:</p>
             <table>
                 <tbody>
                     <tr>

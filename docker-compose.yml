@@ -8,6 +8,9 @@ services:
     - 5000:5000
     volumes:
     - ./:/app
+    environment:
+    - SENDER_EMAIL
+    - SENDER_APP_KEY
 
   redis:
     image: redis:6.2-alpine

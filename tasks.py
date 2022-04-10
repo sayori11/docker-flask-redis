@@ -2,8 +2,9 @@ import requests
 from bs4 import BeautifulSoup
 import lxml
 import redis
-from rq import Queue, get_current_job
+from rq import Queue
 import time
+from utils import sendMail
 
 r = redis.Redis(host='redis', port=6379)
 q = Queue(connection=r)
@@ -31,6 +32,25 @@ def count_words(url):
     print(f"Total words: {len(word_count)}")
 
     return len(word_count)
+
+def count_lines(file_path):
+    time.sleep(10)
+    with open(file_path, "r") as f:
+        count = len(f.readlines())
+
+    print(f"Total lines: {count}")
+
+    return count
+
+def send_mail(email, task_id):
+    task = q.fetch_job(task_id)
+
+    if task.get_status()=='finished':
+        message = f"Task {task_id} completed! \n Result:{task.result}"
+    else:
+        message = f"Sorry,Task {task_id} could not be completed"
+
+    sendMail(message, email)
 
 def check_tasks():
     while True:
